@@ -1,0 +1,8 @@
+- op: replace
+  path: /spec/channel
+  value: 'preview-1.1'
+- op: replace
+  path: /spec/startingCSV
+  value: sandboxed-containers-operator.v1.1.0
+
+
