@@ -139,8 +139,6 @@ echo $QEMU
 ```
 
 ```
-
-```
 [root@worker-0 /]# ps aux | grep qemu | grep $QEMU
 root       12325  0.6  4.0 2463548 332908 ?      Sl   19:10   0:15 /usr/libexec/qemu-kiwi -name
 sandbox-43c05e1a05b14528d9a8173bfd23787ee9235635f512af9c6cb521b223368fda
