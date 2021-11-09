@@ -8,17 +8,17 @@ Both pods will use the exact same image (net-tools) pulled from Quay.io.
 
 First, let's generate a new project:
 
-```
+```sh
 oc new-project test-kata
 ```
 
 Let's deploy a simple example using the net-tools image and a sleep command:
 
-```
+```sh
 oc apply -f examples/example-net-regular.yaml
 ```
 
-```
+```sh
 apiVersion: v1
 kind: Pod
 metadata:
@@ -34,7 +34,7 @@ spec:
 
 if you noticed, the pod have a nodeSelector with the label for ensure that the workloads are running in the labeled kata container worker.
 
-```
+```sh
 oc get pod -o wide
 NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE                       NOMINATED NODE   READINESS GATES
 example-net-tools-regular   1/1     Running   0          55s   10.128.2.41   ocp-8vr6j-worker-0-82t6f   <none>           <none>
@@ -42,7 +42,7 @@ example-net-tools-regular   1/1     Running   0          55s   10.128.2.41   ocp
 
 ## Creating a Kata Container workload
 
-* Let's deploy the same pod but with the runtimeClass defined as 'kata': 
+* Let's deploy the same pod but with the runtimeClass defined as 'kata':
 
 ```sh
 oc apply -f examples/example-net-kata.yaml
@@ -91,9 +91,10 @@ A. Sandboxed Workloads
 oc exec -ti example-net-tools-kata -- cat /proc/uptime
 1082.84 1077.77
 ```
+
 B. Regular Container
 
-```
+```sh
 oc exec -ti example-net-tools-regular -- cat /proc/uptime
 3074.51 11793.48
 ```
@@ -218,4 +219,4 @@ sandbox-712a4cb4a28dff8655bd92fd6bd5e761173a2b2c23b8b7615a5bbb12ca1b75a3
 0
 ```
 
-The QEMU process is indeed running the container we inspected, because the CRI sandboxID is associated with your containerID. The Ids from the crictl inspect that outputs the sandboxID and the QEMU process running the workload are the same. 
+The QEMU process is indeed running the container we inspected, because the CRI sandboxID is associated with your containerID. The Ids from the crictl inspect that outputs the sandboxID and the QEMU process running the workload are the same.
