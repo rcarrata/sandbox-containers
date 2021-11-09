@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-net-tools-regular
+spec:
+  containers:
+    - name: example-net-tools-regular
+      image: quay.io/rcarrata/net-toolbox:latest
+      command: ["/bin/bash", "-c", "sleep 99999999999"]
+  runtimeClassName: kata
