@@ -57,7 +57,14 @@ You must create one KataConfig custom resource (CR) to trigger the OpenShift san
 * You can selectively install the Kata runtime on specific workers. Let's select one:
 
 ```
-NODE_KATA=$(oc get node -l node-role.kubernetes.io/worker=  --no-headers=true | awk '{ print $1 }' | head -n1)
+NODE_KATA=$(oc get node -l node-role.kubernetes.io/worker= --no-headers=true | awk '{ print $1 }' | head -n1)
+
+echo $NODE_KATA
+worker-0.sharedocp4upi49.lab.upshift.rdu2.redhat.com
+```
+
+```
+oc label node $NODE_KATA kata=true
 ```
 
 ```sh
@@ -65,6 +72,10 @@ apiVersion: kataconfiguration.openshift.io/v1
 kind: KataConfig
 metadata:
   name: cluster-kataconfig
+ spec:
+    kataConfigPoolSelector:
+      matchLabels:
+         kata: true
 ```
 
 
