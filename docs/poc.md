@@ -1,16 +1,14 @@
-## Guide for PoC Sandbox Containers in OCP4
+# Guide for PoC Sandbox Containers in OCP4
 
-* **Sandbox**: A sandbox is an isolated environment where programs can run. In a sandbox, you can run untested or untrusted programs without risking harm to the host machine or the operating system.
+Let's deploy two identical pods, one using the regular RuntimeClass and the other using the RuntimeClass "kata" to check the differences between them.
 
-* **Pod in Sandbox Containers**: In the context of OpenShift sandboxed containers, a pod is implemented as a virtual machine. Several containers can run in the same pod on the same virtual machine.
+Both pods will use the exact same image (net-tools) pulled from Quay.io.
 
-* **OpenShift Sandbox Containers Operator**: The OpenShift sandboxed containers Operator is tasked with managing the lifecycle of sandboxed containers on a cluster.
+First, let's generate a new project:
 
-* **Kata Containers**: Kata Containers is a core upstream project that is used to build OpenShift sandboxed containers. OpenShift sandboxed containers integrate Kata Containers with OpenShift Container Platform.
-
-* **KataConfig**: KataConfig objects represent configurations of sandboxed containers. They store information about the state of the cluster, such as the nodes on which the software is deployed.
-
-* **Runtime class**: A RuntimeClass object describes which runtime can be used to run a given workload. A runtime class that is named kata is installed and deployed by the OpenShift sandboxed containers Operator. 
+```
+oc new-project test-kata
+```
 
 ```
 oc apply -k examples/example-fedora-regular.yaml

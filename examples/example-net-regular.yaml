@@ -3,6 +3,8 @@ kind: Pod
 metadata:
   name: example-net-tools-regular
 spec:
+  nodeSelector:
+    kata: 'true'
   containers:
     - name: example-net-tools-regular
       image: quay.io/rcarrata/net-toolbox:latest
