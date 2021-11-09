@@ -130,7 +130,7 @@ You can check to see if the nodes in the machine-config-pool object are going th
 ```
 oc get mcp kata-oc
 NAME      CONFIG                                              UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
-kata-oc   rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8   True      False      False      1              1                   1                     0                      30m
+kata-oc   rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8   True      False      False      1              1                   1                     0                      3m
 ```
 
 If we check the machine config pool we can check that the kata-oc mcp it's based in several machine configs, and in specific there is one that defines the sandbox-containers extensions:
@@ -152,10 +152,10 @@ You can check the machine config that uses the mcp of kata-oc:
 ```sh
 oc get mc | grep sand
 50-enable-sandboxed-containers-extension                                                      3.2.0
-16m
+4m
 ```
 
-Let's check in detail this MachineConfig
+Let's check in detail this MachineConfig described in the step before:
 
 ```sh
 oc get mc $(oc get mc | awk '{ print $1 }' | grep sand) -o yaml
@@ -167,8 +167,7 @@ metadata:
     app: cluster-kataconfig
     machineconfiguration.openshift.io/role: worker
   name: 50-enable-sandboxed-containers-extension
-  resourceVersion: "644597"
-  uid: a7f33dfa-025a-4f7d-83c8-adf9d33823f1
+...
 spec:
   config:
     ignition:
@@ -193,13 +192,62 @@ spec:
 
 as you can noticed the extensions have the sandbox-containers. The [RHCOS extensions](https://github.com/openshift/machine-config-operator/blob/master/docs/MachineConfiguration.md#rhcos-extensions) users can enable a limited set of additional functionality on the RHCOS nodes. In 4.8+ only [usbguard and sandboxed-containers](https://docs.openshift.com/container-platform/4.9/post_installation_configuration/machine-configuration-tasks.html#rhcos-add-extensions_post-install-machine-configuration-tasks) are supported extensions
 
+Automatically the Machine Config Operator will apply the MachineConfigPool rendered containing the different MachineConfigs, including the last MC of sandboxed-containers-extension described in the previous step.
+
+```
+oc get nodes -l kubernetes.io/os=linux,node-role.kubernetes.io/worker=
+NAME                       STATUS                     ROLES    AGE   VERSION
+ocp-8vr6j-worker-0-82t6f   Ready,SchedulingDisabled   worker   26h   v1.22.0-rc.0+a44d0f0
+ocp-8vr6j-worker-0-kvxr9   Ready                      worker   26h   v1.22.0-rc.0+a44d0f0
+ocp-8vr6j-worker-0-sl79n   Ready                      worker   26h   v1.22.0-rc.0+a44d0f0
+```
+
+As you can check the first selected worker labeled with the kata: 'true' is automatically installing and configuring the KataConfig extension.
+
+We can check when the Machine Config Operator finishes their work, when the Updating, and Degraded sections of the MCP are in False state:
+
+```sh
+# oc get mcp kata-oc
+NAME      CONFIG                                              UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
+kata-oc   rendered-kata-oc-999617e684ef816391be460254498d18   True      False      False      1              1                   1                     0                      8m33s
+```
+
+## CRIO Kata Runtimes configurations
+
+Now, let's check the configuration of the CRIO, if it's configured correctly for the Kata runtime handlers.
+
+Let's jump to the worker node labeled with the Kata containers:
+
+```sh
+# oc debug node/$NODE_KATA
+Starting pod/ocp-8vr6j-worker-0-82t6f-debug ...
+To use host binaries, run `chroot /host`
+Pod IP: 192.168.126.53
+If you don't see a command prompt, try pressing enter.
+sh-4.4# chroot /host bash
+[root@ocp-8vr6j-worker-0-82t6f /]#
+```
+
+If we check the crio.conf.d folder, we can see the 50-kata file containing the specifics of the Kata runtimes for CRIO:
+
+```
+[root@ocp-8vr6j-worker-0-82t6f /]# cat /etc/crio/crio.conf.d/50-kata
+[crio.runtime.runtimes.kata]
+  runtime_path = "/usr/bin/containerd-shim-kata-v2"
+  runtime_type = "vm"
+  runtime_root = "/run/vc"
+  privileged_without_host_devices = true
+```
+
 ## Analysis of the RuntimeClass / Kata Runtime
 
 RuntimeClass defines a class of container runtime supported in the cluster. The RuntimeClass is used to determine which container runtime is used to run all containers in a pod.
 
 RuntimeClasses are manually defined by a user or cluster provisioner, and referenced in the PodSpec. In our case we will have the RuntimeClass "kata", because we will demoing the Sandbox Containers use in our OpenShift clusters.
 
-The Kata runtime is now installed on the cluster and ready for use as a secondary runtime. Verify that you see a newly created RuntimeClass for Kata on your cluster.
+After a while, the Kata runtime is now installed on the cluster and ready for use as a secondary runtime. 
+
+Let's verify that we have a newly created RuntimeClass for Kata on our cluster.
 
 ```sh
 oc get runtimeClass kata -o yaml
@@ -207,7 +255,6 @@ apiVersion: node.k8s.io/v1
 handler: kata
 kind: RuntimeClass
 metadata:
-  creationTimestamp: "2021-11-08T19:03:59Z"
   name: kata
 ...
 overhead:

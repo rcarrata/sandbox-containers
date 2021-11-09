@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: example-tools-regular
+  name: example-net-tools-regular
 spec:
   containers:
-    - name: example-tools-regular
-      image: registry.redhat.io/rhel8/support-tools
+    - name: example-net-tools-regular
+      image: quay.io/rcarrata/net-toolbox:latest
       command: ["/bin/bash", "-c", "sleep 99999999999"]
