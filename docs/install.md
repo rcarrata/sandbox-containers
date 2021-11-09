@@ -46,7 +46,7 @@ sandboxed-containers-operator-controller-manager   1/1     1            1       
 
 NOTE: Notice that it's in the Phase Succeeded
 
-## Triggering the installation of the Kata runtime
+## Creating and configuring the KataConfig in Openshift cluster
 
 You must create one KataConfig custom resource (CR) to trigger the OpenShift sandboxed containers Operator to do the following:
 
@@ -60,12 +60,16 @@ You must create one KataConfig custom resource (CR) to trigger the OpenShift san
 NODE_KATA=$(oc get node -l node-role.kubernetes.io/worker= --no-headers=true | awk '{ print $1 }' | head -n1)
 
 echo $NODE_KATA
-worker-0.sharedocp4upi49.lab.upshift.rdu2.redhat.com
+ocp-8vr6j-worker-0-82t6f
 ```
+
+* Label the node that will be where the KataConfig will apply:
 
 ```
 oc label node $NODE_KATA kata=true
 ```
+
+* In the KataConfig we can see the matchLabel with the exact label defined in the step before:
 
 ```sh
 apiVersion: kataconfiguration.openshift.io/v1
@@ -75,15 +79,75 @@ metadata:
  spec:
     kataConfigPoolSelector:
       matchLabels:
-         kata: true
+         kata: 'true'
 ```
 
+Note: There is a typo in the doc [1] since it uses true as label value instead of ‘true’
+
+* Install the KataConfig using kustomize:
 
 ```sh
 oc apply -k instance/overlays/default/
 ```
 
+* You can monitor the values of the KataConfig custom resource by running:
 
+```sh
+oc describe kataconfig cluster-kataconfig
+Name:         cluster-kataconfig
+Namespace:
+Labels:       <none>
+Annotations:  <none>
+API Version:  kataconfiguration.openshift.io/v1
+Kind:         KataConfig
+...
+Spec:
+  Kata Config Pool Selector:
+    Match Labels:
+      Kata:  true
+Status:
+  Installation Status:
+    Is In Progress:  True
+    Completed:
+    Failed:
+    Inprogress:
+  Prev Mcp Generation:  2
+  Runtime Class:        kata
+  Total Nodes Count:    1
+  Un Installation Status:
+    Completed:
+    Failed:
+    In Progress:
+      Status:
+  Upgrade Status:
+Events:  <none>
+```
+
+as you can notice the KataConfig installation it's in progress in One Total Node Count and using the Runtime Class kata
+
+You can check to see if the nodes in the machine-config-pool object are going through a config update.
+
+```
+oc get mcp kata-oc
+NAME      CONFIG                                              UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
+kata-oc   rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8   True      False      False      1              1                   1                     0                      30m
+```
+
+If we check the machine config pool we can check that the kata-oc mcp it's based in several machine configs, and in specific there is one that defines the sandbox-containers extensions:
+
+```
+oc get mcp kata-oc -o yaml | egrep -i 'kata|sandbox'
+  name: kata-oc
+    name: rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8
+      name: 50-enable-sandboxed-containers-extension
+      - kata-oc
+      kata: "true"
+    message: All nodes are updated with rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8
+    name: rendered-kata-oc-7ce66b5e9e1c51753ebf99c1d9603bd8
+      name: 50-enable-sandboxed-containers-extension
+```
+
+You can check the machine config that uses the mcp of kata-oc:
 
 ```sh
 oc get mc | grep sand
@@ -91,13 +155,14 @@ oc get mc | grep sand
 16m
 ```
 
+Let's check in detail this MachineConfig
+
 ```sh
 oc get mc $(oc get mc | awk '{ print $1 }' | grep sand) -o yaml
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
-  creationTimestamp: "2021-11-08T19:03:59Z"
-  generation: 1
+...
   labels:
     app: cluster-kataconfig
     machineconfiguration.openshift.io/role: worker
@@ -125,3 +190,32 @@ spec:
   kernelType: ""
   osImageURL: ""
 ```
+
+as you can noticed the extensions have the sandbox-containers. The [RHCOS extensions](https://github.com/openshift/machine-config-operator/blob/master/docs/MachineConfiguration.md#rhcos-extensions) users can enable a limited set of additional functionality on the RHCOS nodes. In 4.8+ only [usbguard and sandboxed-containers](https://docs.openshift.com/container-platform/4.9/post_installation_configuration/machine-configuration-tasks.html#rhcos-add-extensions_post-install-machine-configuration-tasks) are supported extensions
+
+## Analysis of the RuntimeClass / Kata Runtime
+
+RuntimeClass defines a class of container runtime supported in the cluster. The RuntimeClass is used to determine which container runtime is used to run all containers in a pod.
+
+RuntimeClasses are manually defined by a user or cluster provisioner, and referenced in the PodSpec. In our case we will have the RuntimeClass "kata", because we will demoing the Sandbox Containers use in our OpenShift clusters.
+
+The Kata runtime is now installed on the cluster and ready for use as a secondary runtime. Verify that you see a newly created RuntimeClass for Kata on your cluster.
+
+```sh
+oc get runtimeClass kata -o yaml
+apiVersion: node.k8s.io/v1
+handler: kata
+kind: RuntimeClass
+metadata:
+  creationTimestamp: "2021-11-08T19:03:59Z"
+  name: kata
+...
+overhead:
+  podFixed:
+    cpu: 250m
+    memory: 350Mi
+scheduling:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+```
+

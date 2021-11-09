@@ -25,4 +25,5 @@ NOTE: This PoC it's tested in 4.9.5 using the Sandbox Containers Preview 1.1.
 
 ## Links of Interest
 
-* [Sandbox Continers 101](https://cloud.redhat.com/blog/openshift-sandboxed-containers-101)
+* [Sandbox Containers 101](https://cloud.redhat.com/blog/openshift-sandboxed-containers-101)
+* [Kata Containers in Minikube](https://github.com/kata-containers/kata-containers/blob/main/docs/install/minikube-installation-guide.md)
