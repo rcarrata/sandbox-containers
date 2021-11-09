@@ -4,4 +4,5 @@ kind: Kustomization
 namespace: openshift-sandboxed-containers-operator
 
 resources:
+  - namespace.yaml
   - kata-operator-subscription.yaml

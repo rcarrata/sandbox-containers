@@ -1,72 +1,16 @@
 ## Guide for PoC Sandbox Containers in OCP4
 
-```
-oc apply -k operator/overlays/preview-1.1/
-```
+* **Sandbox**: A sandbox is an isolated environment where programs can run. In a sandbox, you can run untested or untrusted programs without risking harm to the host machine or the operating system.
 
-```
-oc get subs -n openshift-sandboxed-containers-operator
-NAME                            PACKAGE                         SOURCE             CHANNEL
-sandboxed-containers-operator   sandboxed-containers-operator   redhat-operators   preview-1.1
-```
+* **Pod in Sandbox Containers**: In the context of OpenShift sandboxed containers, a pod is implemented as a virtual machine. Several containers can run in the same pod on the same virtual machine.
 
-```
-oc get csv -n openshift-sandboxed-containers-operator
-NAME                                   DISPLAY                                   VERSION   REPLACES                               PHASE
-sandboxed-containers-operator.v1.1.0   OpenShift sandboxed containers Operator   1.1.0     sandboxed-containers-operator.v1.0.2   Succeeded
-```
+* **OpenShift Sandbox Containers Operator**: The OpenShift sandboxed containers Operator is tasked with managing the lifecycle of sandboxed containers on a cluster.
 
-```
-apiVersion: kataconfiguration.openshift.io/v1
-kind: KataConfig
-metadata:
-  name: cluster-kataconfig
-```
+* **Kata Containers**: Kata Containers is a core upstream project that is used to build OpenShift sandboxed containers. OpenShift sandboxed containers integrate Kata Containers with OpenShift Container Platform.
 
-```
-oc apply -k instance/overlays/default/
-```
+* **KataConfig**: KataConfig objects represent configurations of sandboxed containers. They store information about the state of the cluster, such as the nodes on which the software is deployed.
 
-```
-oc get mc | grep sand
-50-enable-sandboxed-containers-extension                                                      3.2.0
-16m
-```
-
-```
-oc get mc $(oc get mc | awk '{ print $1 }' | grep sand) -o yaml
-apiVersion: machineconfiguration.openshift.io/v1
-kind: MachineConfig
-metadata:
-  creationTimestamp: "2021-11-08T19:03:59Z"
-  generation: 1
-  labels:
-    app: cluster-kataconfig
-    machineconfiguration.openshift.io/role: worker
-  name: 50-enable-sandboxed-containers-extension
-  resourceVersion: "644597"
-  uid: a7f33dfa-025a-4f7d-83c8-adf9d33823f1
-spec:
-  config:
-    ignition:
-      config:
-        replace:
-          verification: {}
-      proxy: {}
-      security:
-        tls: {}
-      timeouts: {}
-      version: 3.2.0
-    passwd: {}
-    storage: {}
-    systemd: {}
-  extensions:
-  - sandboxed-containers
-  fips: false
-  kernelArguments: null
-  kernelType: ""
-  osImageURL: ""
-```
+* **Runtime class**: A RuntimeClass object describes which runtime can be used to run a given workload. A runtime class that is named kata is installed and deployed by the OpenShift sandboxed containers Operator. 
 
 ```
 oc apply -k examples/example-fedora-regular.yaml

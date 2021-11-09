@@ -4,5 +4,3 @@
 - op: replace
   path: /spec/startingCSV
   value: sandboxed-containers-operator.v1.1.0
-
-
