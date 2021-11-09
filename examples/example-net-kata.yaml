@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: example-net-tools-regular
+  name: example-net-tools-kata
 spec:
   nodeSelector:
     kata: 'true'
   containers:
-    - name: example-net-tools-regular
+    - name: example-net-tools-kata
       image: quay.io/rcarrata/net-toolbox:latest
       command: ["/bin/bash", "-c", "sleep 99999999999"]
   runtimeClassName: kata

@@ -4,15 +4,45 @@ Let's deploy two identical pods, one using the regular RuntimeClass and the othe
 
 Both pods will use the exact same image (net-tools) pulled from Quay.io.
 
+## Deploying a regular workload
+
 First, let's generate a new project:
 
 ```
 oc new-project test-kata
 ```
 
+Let's deploy a simple example using the net-tools image and a sleep command:
+
 ```
-oc apply -k examples/example-fedora-regular.yaml
+oc apply -f examples/example-net-regular.yaml
 ```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-net-tools-regular
+spec:
+  nodeSelector:
+    kata: 'true'
+  containers:
+    - name: example-net-tools-regular
+      image: quay.io/rcarrata/net-toolbox:latest
+      command: ["/bin/bash", "-c", "sleep 99999999999"]
+```
+
+if you noticed, the pod have a nodeSelector with the label for ensure that the workloads are running in the labeled kata container worker.
+
+```
+oc get pod -o wide
+NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE                       NOMINATED NODE   READINESS GATES
+example-net-tools-regular   1/1     Running   0          55s   10.128.2.41   ocp-8vr6j-worker-0-82t6f   <none>           <none>
+```
+
+## Creating a Kata Container workload:
+
+* Let's deploy the same pod but with the runtimeClass defined as 'kata': 
 
 ```
 oc apply -k examples/example-fedora-kata.yaml
