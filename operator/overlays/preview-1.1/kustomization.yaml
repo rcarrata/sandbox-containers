@@ -9,5 +9,5 @@ patchesJson6902:
       group: operators.coreos.com
       version: v1alpha1
       kind: Subscription
-      name: sandboxed-containers-operator
+      name: openshift-sandboxed-containers-operator
     path: patch-channel.yaml
