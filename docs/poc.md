@@ -156,46 +156,66 @@ But they are the same kernel version! But we checked that are different kernel i
 
 Despite of the mentioned differences, Kata Containers used by the OpenShift Sandbox Containers it's always running with the very same kernel version on the VM as the underlying RHCOS is running with (OS). The VM image is generated at the startup of the host, ensuring that is compatible with the kernel currently used by the RHCOS host.
 
-```sh
-node_kata=$(oc get pod/example-fedora -o=jsonpath='{.spec.nodeName}')
+## Analysis of the QEMU processes of the Sandbox Containers
 
-echo $node_kata
-worker-0.sharedocp4upi49.lab.upshift.rdu2.redhat.com
+Sandbox Containers are containers that are sandboxed by a VM running a QEMU process.
+
+If we check the node where the workload is running, we can verify that this QEMU process is also running there:
+
+* Let's check which node our example kata pod has been assigned to:  
+
+```sh
+pod_node_kata=$(oc get pod/example-net-tools-kata -o=jsonpath='{.spec.nodeName}')
+
+echo $pod_node_kata
+ocp-8vr6j-worker-0-82t6f
 ```
 
+as we expected is the same as we defined using the label kata: 'true'.
+
+* Let's extract the containerID CRI:
+
 ```sh
-oc get pod/example-fedora -o=jsonpath='{.status.containerStatuses[*].containerID}' | cut -d "/" -f3
+oc get pod/example-net-tools-kata -o=jsonpath='{.status.containerStatuses[*].containerID}' | cut -d "/" -f3
+fcc17d03b182e0ac3db33f3a19668a7b59d1ef32934e0af0db01a6a482c04056
 ```
 
-
+* Let's jump into the node where the kata container is running using the oc debug node:
 
 ```sh
-oc debug node/$node_kata
+oc debug node/$pod_node_kata
 chroot /host bash
 [root@worker-0 /]#
 ```
 
+* Check the qemu processes that are running in the node:
+
 ```sh
-[root@worker-0 /]# ps aux | grep qemu
-root       12325  0.6  4.0 2463548 332908 ?      Sl   19:10   0:15 /usr/libexec/qemu-kiwi -name
-sandbox-43c05e1a05b14528d9a8173bfd23787ee9235635f512af9c6cb521b223368fda -uuid
-872150e8-1fba-44f1-b445-966bc52d0a5d -machine q35,accel=kvm,kernel_irqchip
+ps aux | grep qemu
+sandbox-712a4cb4a28dff8655bd92fd6bd5e761173a2b2c23b8b7615a5bbb12ca1b75a3 -uuid 2428acef-210f-42c5-9def-7c407c5c4042 -machine q35,accel=kvm,kernel_irqchip -cpu host,pmu=off
 ...
 ```
 
-```sh
-QEMU=$(crictl inspect 639f725e7724630af7345315bd678192eb45539f70b3ef2a01a457d689f3a2f | jq -r '.info.sandboxID')
+as we can see, there is one qemu process running. It is expected to see a qemu process running for each pod running sandbox containers / kata containers on that host/node.
 
-echo $QEMU
-43c05e1a05b14528d9a8173bfd23787ee9235635f512af9c6cb521b223368fda
+* Let's check the sandboxID with the crictl inspect. We will use the containerID from the earlier step:
+
+```sh
+sandboxID=$(crictl inspect fcc17d03b182e0ac3db33f3a19668a7b59d1ef32934e0af0db01a6a482c04056 | jq -r '.info.sandboxID')
+
+echo $sandboxID
+712a4cb4a28dff8655bd92fd6bd5e761173a2b2c23b8b7615a5bbb12ca1b75a3
 ```
 
+* Check the QEMU process again filtering by the sandboxID:
+
 ```sh
-[root@worker-0 /]# ps aux | grep qemu | grep $QEMU
+[root@worker-0 /]# ps aux | grep qemu | grep $sandboxID
 root       12325  0.6  4.0 2463548 332908 ?      Sl   19:10   0:15 /usr/libexec/qemu-kiwi -name
-sandbox-43c05e1a05b14528d9a8173bfd23787ee9235635f512af9c6cb521b223368fda
+sandbox-712a4cb4a28dff8655bd92fd6bd5e761173a2b2c23b8b7615a5bbb12ca1b75a3
 
 [root@worker-0 /]# echo $?
 0
 ```
 
+The QEMU process is indeed running the container we inspected, because the CRI sandboxID is associated with your containerID. The Ids from the crictl inspect that outputs the sandboxID and the QEMU process running the workload are the same. 
